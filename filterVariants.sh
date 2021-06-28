@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Version 5 from 3rd July 2019
-# bug fix number 3
+# Version 7 from 13 Feb 2020
+# bug fix number 5
 # for internal use at the Institute of Genetics
-# University fo Bern
+# University of Bern
 # made by Irene Häfliger
 # if any problems occure, please contact: irene.haefliger@vetsuisse.unibe.ch
 
 
-echo '#################################################################################' 
-echo '# To whome it may concern,                                                      #'
-echo '# you have chosen to work with this program. I congratulate you on your choice. #'
-echo '# Remember, with great power comes great responsibility.                        #' 
-echo '################################################################################'
+echo '###########################################################################################' 
+echo '# To whome it may concern,                                                                #'
+echo '# you have chosen to work with this tool. I congratulate you on your fantastic choice.    #'
+echo '# Remember, with great power comes great responsibility.                                  #' 
+echo '###########################################################################################'
 
 RIGHT_NOW=$(date +"%x %r %Z")
 echo "${RIGHT_NOW}" | tee -a ${LOGFILE}
@@ -314,6 +314,17 @@ then
 		echo number of columns in the header: ${lengthHeaderTotal}
 		endControls=$(echo "${lengthHeaderTotal}-19" | bc)
 		cut -f6-${endControls} headerline_temp | tr '\t' '\n' > controlIDs.list
+  mv controlIDs.list exclude_nonAnimalCol.temp
+  
+  # make sure the last elements are not in:
+  columns_to_exclude_NONANIMALS="ALLELE EFFECT IMPACT GENE GENEID FEATURE FEATUREID BIOTYPE RANK HGVS_C HGVS_P CDNA_POS CDNA_LEN CDS_POS CDS_LEN AA_POS AA_LEN DISTANCE ERRORS"
+  for nonAnimal_col in ${columns_to_exclude_NONANIMALS};
+  do
+   awk -v code=${nonAnimal_col} '{if ( $1 != code ) print }' exclude_nonAnimalCol.temp > exclude_nonAnimalCol.temp2
+   mv exclude_nonAnimalCol.temp2 exclude_nonAnimalCol.temp
+  done
+  mv exclude_nonAnimalCol.temp controlIDs.list
+  
 		# exclude cases
 		for single_cases in ${target};
 		do
@@ -559,7 +570,6 @@ echo '# Harnessing genomic information for livestock improvement.   #'
 echo '# Nature Reviews Genetics, p.1.                               #'
 echo '###############################################################' 
 
-#sleep 5m
 
 ##############
 ### second part
@@ -669,14 +679,18 @@ rm -f ${selectionIIA} ${selectionIIB}
 echo "subset based on general filters saved as ${dir_output}/${selectionII}" | tee -a ${LOGFILE}
 echo -e "\n" | tee -a ${LOGFILE}
 
-echo '###############################################################' 
-echo '# The second part is done. It might not take so long anymore. #' 
-echo '# Some useless knowledge needed?                              #'
-echo '# There are 336 dimples on a regulation golf ball.            #'
-echo '###############################################################' 
+echo '##########################################################################' 
+echo '# The second part is done. It might not take so long anymore.            #'
+echo '##########################################################################' 
+echo '# Want to have something to laugh at?                                    #'
+echo '# A biologist, a chemist and a statistician are out hunting.             #'
+echo '# The biologist shoots at a deer and misses five feet to the left.       #'
+echo '# The chemist shoots at the same deer and misses five feet to the right. #'
+echo '# The statistician shouts, "We got him!"                                 #'
+echo '##########################################################################' 
 
 
-#sleep 5m
+
 
 ##############
 ### third part
@@ -720,7 +734,8 @@ then
 	else
 		
 		# check for several genotypes
-		cat header.vcf > variants_${target}.vcf
+		labID_target=$( echo ${target} | tr -d ' ' )
+		cat header.vcf > variants_${labID_target}.vcf
 		echo ${target_genotypes} | tr ' ' '\n' > definedTargetGenotypes_temp
 		rm -f variants_definedTargetGenotypes.vcf
 		
@@ -729,9 +744,9 @@ then
 			awk -v t=${col} -v g=${line} '{if ( $t == g ) print }' ${selectionII} >> variants_definedTargetGenotypes.vcf
 		done < definedTargetGenotypes_temp
 		
-		sort variants_definedTargetGenotypes.vcf | uniq >> variants_${target}.vcf
+		sort variants_definedTargetGenotypes.vcf | uniq >> variants_${labID_target}.vcf
 
-		selectionIIIA=variants_${target}.vcf
+		selectionIIIA=variants_${labID_target}.vcf
 		
 		rm -f definedTargetGenotypes_temp
 		rm -f variants_definedTargetGenotypes.vcf
@@ -776,12 +791,15 @@ else
 
 fi
 
-#sleep 5m
-echo '########################################################################' 
-echo '# The third part is halfe way done. It might not take so long anymore. #' 
-echo '# Some useless knowledge needed?                                       #'
-echo '# Honey is the only food that does not spoil!                          #'
-echo '########################################################################' 
+
+echo '#######################################################################################' 
+echo '# The third part is halfe way done. It might not take so long anymore.                #'
+echo '#######################################################################################' 
+echo '# You really want to hear another one - I know it!                                    #'
+echo '# Here you go:                                                                        #'
+echo '# What do you get when you cross a cow with an octopus?                               #'
+echo '# A meeting with the ethics committee and the swift removal of your research funding. #'
+echo '#######################################################################################' 
 
 
 ##
@@ -799,7 +817,7 @@ elif [[ ${lengthControls} -eq 1 ]]
 then
 	echo "variants of ${control} are going to be anaylased based on the control genotypes ${control_genotypes}" | tee -a ${LOGFILE}
 	col=$( cat header.vcf | tr '\t' '\n' | cat -n | grep ${control} | awk '{print $1}' )
-	
+	labID_control=$(echo ${control} | tr -d' ' )
 	#no control genotype
 	lengthControlsGenotypes=$(echo ${control_genotypes} | tr ' ' '\n' | wc -l )
 	
@@ -809,18 +827,18 @@ then
 		echo "No control genotypes had been selected" | tee -a ${LOGFILE}
 	else
 	# check for several genotypes
-		cat header.vcf > variants_${control}.vcf
+		cat header.vcf > variants_"${labID_control}".vcf
 		echo ${control_genotypes} | tr ' ' '\n' > definedControlGenotypes_temp
 		rm -f variants_definedControlsGenotypes.vcf
 		
 		while read genotype;
 		do #loop over genotypes
-			awk -v t=${col} -v g=${genotype} '{if ( $t == g ) print }' ${selectionIIIA} >> variants_definedControlsGenotypes.vcf
+			awk -v t=${col} -v gt=${genotype} '{if ( $t == gt ) print }' ${selectionIIIA} >> variants_definedControlsGenotypes.vcf
 		done < definedControlGenotypes_temp
 
-		sort variants_definedControlsGenotypes.vcf | uniq >> variants_${control}.vcf
+		sort variants_definedControlsGenotypes.vcf | uniq >> variants_"${labID_control}".vcf
 		
-		selectionIIIB=variants_${control}.vcf
+		selectionIIIB=variants_"${labID_control}".vcf
 		
 		rm -f definedControlGenotypes_temp
 		rm -f variants_definedControlsGenotypes.vcf
@@ -861,19 +879,25 @@ else
 	
 fi
 
+
 OUTPUT=$(echo "${output_name}")
 cp ${selectionIIIB} ${OUTPUT}
 selectionIII=${OUTPUT}
 rm -f ${selectionIIIA} 
 rm -f ${selectionIIIB} 
 
-echo '###############################################################' 
-echo '# The third part is done. It might not take so long anymore.  #' 
-echo '# Some useless knowledge needed?                              #'
-echo '# Humans and Bananas share about 50% of the same DNA          #'
-echo '###############################################################' 
+echo '####################################################################' 
+echo '# The third part is done. It might not take so long anymore.       #'
+echo '####################################################################' 
+echo '# And a last one:                                                  #'
+echo '# A wife sends her software engineer husband to the store          #'
+echo '# "Could you please go shopping for me and buy one carton of milk. #'
+echo '# And if they have eggs, get six!"                                 #'
+echo '# Later, the husband comes back with six cartons of milk.          #'
+echo '# The wife asks him why he bought six cartons of milk              #'
+echo '# and he replied, "They had eggs."                                 #'
+echo '####################################################################' 
 
-#sleep 5m
 
 ##############
 ### final remarks, tidy up and report
